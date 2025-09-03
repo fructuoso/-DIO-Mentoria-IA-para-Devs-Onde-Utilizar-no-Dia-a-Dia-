@@ -1,0 +1,60 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch API Gateway",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-apigateway",
+      "program": "${workspaceFolder}/src/ApiGateway/bin/Debug/net8.0/ApiGateway.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/ApiGateway",
+      "console": "internalConsole",
+      "stopAtEntry": false,
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_URLS": "https://localhost:5000;http://localhost:5050"
+      }
+    },
+    {
+      "name": "Launch Stock Service",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-stockservice",
+      "program": "${workspaceFolder}/src/StockService/bin/Debug/net8.0/StockService.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/StockService",
+      "console": "internalConsole",
+      "stopAtEntry": false,
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_URLS": "https://localhost:5001;http://localhost:5051"
+      }
+    },
+    {
+      "name": "Launch Sales Service",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-salesservice",
+      "program": "${workspaceFolder}/src/SalesService/bin/Debug/net8.0/SalesService.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/SalesService",
+      "console": "internalConsole",
+      "stopAtEntry": false,
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_URLS": "https://localhost:5002;http://localhost:5052"
+      }
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Launch All Services",
+      "configurations": [
+        "Launch API Gateway",
+        "Launch Stock Service",
+        "Launch Sales Service"
+      ]
+    }
+  ]
+}

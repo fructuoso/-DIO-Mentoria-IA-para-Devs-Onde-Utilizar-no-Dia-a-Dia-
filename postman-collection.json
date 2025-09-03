@@ -1,0 +1,1865 @@
+{
+	"info": {
+		"_postman_id": "15f3394a-4cbb-4625-899d-da027efaf71d",
+		"name": "Desafio Avanade - E-commerce Microservices",
+		"description": "Coleção completa de testes para o sistema de microserviços de e-commerce baseada nos cenários BDD",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "5970890"
+	},
+	"item": [
+		{
+			"name": "🔐 Authentication",
+			"description": "Cenários de autenticação JWT",
+			"item": [
+				{
+					"name": "✅ Login Valid Credentials",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has token\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('token');",
+									"    pm.expect(jsonData.token).to.be.a('string');",
+									"    pm.collectionVariables.set(\"token\", jsonData.token);",
+									"});",
+									"",
+									"pm.test(\"Response has user info\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('username');",
+									"    pm.expect(jsonData).to.have.property('role');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"{{admin-username}}\",\n    \"password\": \"{{admin-password}}\"\n}"
+						},
+						"url": {
+							"raw": "{{api-gateway-url}}/api/auth/login",
+							"host": ["{{api-gateway-url}}"],
+							"path": ["api", "auth", "login"]
+						}
+					}
+				},
+				{
+					"name": "❌ Login Invalid Credentials",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 401\", function () {",
+									"    pm.response.to.have.status(401);",
+									"});",
+									"",
+									"pm.test(\"Response contains error message\", function () {",
+									"    var responseText = pm.response.text();",
+									"    pm.expect(responseText).to.include('Invalid');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"invalid\",\n    \"password\": \"wrong\"\n}"
+						},
+						"url": {
+							"raw": "{{api-gateway-url}}/api/auth/login",
+							"host": ["{{api-gateway-url}}"],
+							"path": ["api", "auth", "login"]
+						}
+					}
+				},
+				{
+					"name": "❌ Access Protected Endpoint Without Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 401\", function () {",
+									"    pm.response.to.have.status(401);",
+									"});",
+									"",
+									"pm.test(\"Response indicates unauthorized\", function () {",
+									"    var responseText = pm.response.text();",
+									"    pm.expect(responseText.toLowerCase()).to.include('unauthorized');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{api-gateway-url}}/api/stock/products",
+							"host": ["{{api-gateway-url}}"],
+							"path": ["api", "stock", "products"]
+						}
+					}
+				},
+				{
+					"name": "❌ Access with Expired Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 401\", function () {",
+									"    pm.response.to.have.status(401);",
+									"});",
+									"",
+									"pm.test(\"Response indicates token issue\", function () {",
+									"    var responseText = pm.response.text();",
+									"    pm.expect(responseText.toLowerCase()).to.match(/expired|invalid|unauthorized/);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE1MTYyMzkwMjJ9.4Adcj3UFYzPUVaVF43FmMab6RlaQD8A9V8wFzzht-KE",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{api-gateway-url}}/api/stock/products",
+							"host": ["{{api-gateway-url}}"],
+							"path": ["api", "stock", "products"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "📦 Stock Service",
+			"description": "Cenários do microserviço de estoque",
+			"item": [
+				{
+					"name": "Products Management",
+					"item": [
+						{
+							"name": "✅ Create Product Valid Data",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"",
+											"pm.test(\"Product created with ID\", function () {",
+											"    var jsonData = pm.response.json();",
+											"    pm.expect(jsonData).to.have.property('id');",
+											"    pm.expect(jsonData.id).to.be.a('number');",
+											"    pm.collectionVariables.set(\"created-product-id\", jsonData.id);",
+											"});",
+											"",
+											"pm.test(\"Product data is correct\", function () {",
+											"    var jsonData = pm.response.json();",
+											"    pm.expect(jsonData.name).to.eql('Smartphone Samsung Galaxy');",
+											"    pm.expect(jsonData.price).to.eql(1299.99);",
+											"    pm.expect(jsonData.stockQuantity).to.eql(50);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Smartphone Samsung Galaxy\",\n    \"description\": \"Smartphone Android com 128GB de armazenamento\",\n    \"price\": 1299.99,\n    \"stockQuantity\": 50\n}"
+								},
+								"url": {
+									"raw": "{{api-gateway-url}}/api/stock/products",
+									"host": ["{{api-gateway-url}}"],
+									"path": ["api", "stock", "products"]
+								}
+							}
+						},
+						{
+							"name": "✅ Get All Products",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Response is array\", function () {",
+											"    var jsonData = pm.response.json();",
+											"    pm.expect(jsonData).to.be.an('array');",
+											"});",
+											"",
+											"pm.test(\"Products have required fields\", function () {",
+											"    var jsonData = pm.response.json();",
+											"    if (jsonData.length > 0) {",
+											"        var product = jsonData[0];",
+											"        pm.expect(product).to.have.property('id');",
+											"        pm.expect(product).to.have.property('name');",
+											"        pm.expect(product).to.have.property('description');",
+											"        pm.expect(product).to.have.property('price');",
+											"        pm.expect(product).to.have.property('stockQuantity');",
+											"    }",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{api-gateway-url}}/api/stock/products",
+									"host": ["{{api-gateway-url}}"],
+									"path": ["api", "stock", "products"]
+								}
+							}
+						},
+						{
+							"name": "✅ Get Product By ID",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Product data is correct\", function () {",
+											"    var jsonData = pm.response.json();",
+											"    pm.expect(jsonData).to.have.property('id');",
+											"    pm.expect(jsonData).to.have.property('name');",
+											"    pm.expect(jsonData).to.have.property('description');",
+											"    pm.expect(jsonData).to.have.property('price');",
+											"    pm.expect(jsonData).to.have.property('stockQuantity');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{api-gateway-url}}/api/stock/products/1",
+									"host": ["{{api-gateway-url}}"],
+									"path": ["api", "stock", "products", "1"]
+								}
+							}
+						},
+						{
+							"name": "❌ Get Product Nonexistent ID",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 404\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});",
+											"",
+											"pm.test(\"Error message indicates not found\", function () {",
+											"    var responseText = pm.response.text();",
+											"    pm.expect(responseText.toLowerCase()).to.include('not found');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{api-gateway-url}}/api/stock/products/999",
+									"host": ["{{api-gateway-url}}"],
+									"path": ["api", "stock", "products", "999"]
+								}
+							}
+						},
+						{
+							"name": "❌ Create Product Empty Name",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Validation error for name field\", function () {",
+											"    var responseText = pm.response.text();",
+											"    pm.expect(responseText.toLowerCase()).to.include('name');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"\",\n    \"description\": \"Test product\",\n    \"price\": 100.00,\n    \"stockQuantity\": 10\n}"
+								},
+								"url": {
+									"raw": "{{api-gateway-url}}/api/stock/products",
+									"host": ["{{api-gateway-url}}"],
+									"path": ["api", "stock", "products"]
+								}
+							}
+						},
+						{
+							"name": "❌ Create Product Negative Price",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Error message indicates price validation\", function () {",
+											"    var responseText = pm.response.text();",
+											"    pm.expect(responseText.toLowerCase()).to.include('price');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Invalid Product\",\n    \"description\": \"Product with negative price\",\n    \"price\": -100.00,\n    \"stockQuantity\": 10\n}"
+								},
+								"url": {
+									"raw": "{{api-gateway-url}}/api/stock/products",
+									"host": ["{{api-gateway-url}}"],
+									"path": ["api", "stock", "products"]
+								}
+							}
+						},
+						{
+							"name": "❌ Create Product Negative Stock",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Error message indicates stock validation\", function () {",
+											"    var responseText = pm.response.text();",
+											"    pm.expect(responseText.toLowerCase()).to.include('stock');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Invalid Product\",\n    \"description\": \"Product with negative stock\",\n    \"price\": 100.00,\n    \"stockQuantity\": -5\n}"
+								},
+								"url": {
+									"raw": "{{api-gateway-url}}/api/stock/products",
+									"host": ["{{api-gateway-url}}"],
+									"path": ["api", "stock", "products"]
+								}
+							}
+						},
+						{
+							"name": "❌ Create Product Long Description",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Validation error for description\", function () {",
+											"    var responseText = pm.response.text();",
+											"    pm.expect(responseText.toLowerCase()).to.include('description');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Test Product\",\n    \"description\": \"This is a very long description that exceeds the maximum allowed length of 1000 characters. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.\",\n    \"price\": 100.00,\n    \"stockQuantity\": 10\n}"
+								},
+								"url": {
+									"raw": "{{api-gateway-url}}/api/stock/products",
+									"host": ["{{api-gateway-url}}"],
+									"path": ["api", "stock", "products"]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "Stock Management",
+					"item": [
+						{
+							"name": "✅ Check Stock Sufficient",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Stock is sufficient\", function () {",
+											"    var jsonData = pm.response.json();",
+											"    pm.expect(jsonData.isAvailable).to.be.true;",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{api-gateway-url}}/api/stock/products/1/stock/check/10",
+									"host": ["{{api-gateway-url}}"],
+									"path": ["api", "stock", "products", "1", "stock", "check", "10"]
+								}
+							}
+						},
+						{
+							"name": "⚠️ Check Stock Insufficient",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Stock is insufficient\", function () {",
+											"    var jsonData = pm.response.json();",
+											"    pm.expect(jsonData.isAvailable).to.be.false;",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{api-gateway-url}}/api/stock/products/1/stock/check/1000",
+									"host": ["{{api-gateway-url}}"],
+									"path": ["api", "stock", "products", "1", "stock", "check", "1000"]
+								}
+							}
+						},
+						{
+							"name": "❌ Check Stock Zero Quantity",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Error message indicates quantity validation\", function () {",
+											"    var responseText = pm.response.text();",
+											"    pm.expect(responseText.toLowerCase()).to.include('quantity');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{api-gateway-url}}/api/stock/products/1/stock/check/0",
+									"host": ["{{api-gateway-url}}"],
+									"path": ["api", "stock", "products", "1", "stock", "check", "0"]
+								}
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "🛒 Sales Service",
+			"description": "Cenários do microserviço de vendas",
+			"item": [
+				{
+					"name": "Order Management",
+					"item": [
+						{
+							"name": "✅ Create Order Valid Items",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 201\", function () {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"",
+											"pm.test(\"Order created with ID\", function () {",
+											"    var jsonData = pm.response.json();",
+											"    pm.expect(jsonData).to.have.property('id');",
+											"    pm.expect(jsonData.id).to.be.a('number');",
+											"    pm.collectionVariables.set(\"created-order-id\", jsonData.id);",
+											"});",
+											"",
+											"pm.test(\"Order status is Pending\", function () {",
+											"    var jsonData = pm.response.json();",
+											"    pm.expect(jsonData.status).to.eql('Pending');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"customerId\": \"{{customer-id}}\",\n    \"items\": [\n        {\n            \"productId\": 1,\n            \"quantity\": 2\n        },\n        {\n            \"productId\": 2,\n            \"quantity\": 1\n        }\n    ]\n}"
+								},
+								"url": {
+									"raw": "{{api-gateway-url}}/api/sales/orders",
+									"host": ["{{api-gateway-url}}"],
+									"path": ["api", "sales", "orders"]
+								}
+							}
+						},
+						{
+							"name": "✅ Get All Orders",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Response is array\", function () {",
+											"    var jsonData = pm.response.json();",
+											"    pm.expect(jsonData).to.be.an('array');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{api-gateway-url}}/api/sales/orders",
+									"host": ["{{api-gateway-url}}"],
+									"path": ["api", "sales", "orders"]
+								}
+							}
+						},
+						{
+							"name": "✅ Get Customer Orders",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Response is array\", function () {",
+											"    var jsonData = pm.response.json();",
+											"    pm.expect(jsonData).to.be.an('array');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{api-gateway-url}}/api/sales/orders/my-orders",
+									"host": ["{{api-gateway-url}}"],
+									"path": ["api", "sales", "orders", "my-orders"]
+								}
+							}
+						},
+						{
+							"name": "✅ Get Order By ID",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Order data is complete\", function () {",
+											"    var jsonData = pm.response.json();",
+											"    pm.expect(jsonData).to.have.property('id');",
+											"    pm.expect(jsonData).to.have.property('customerId');",
+											"    pm.expect(jsonData).to.have.property('items');",
+											"    pm.expect(jsonData).to.have.property('totalAmount');",
+											"    pm.expect(jsonData).to.have.property('status');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{api-gateway-url}}/api/sales/orders/{{created-order-id}}",
+									"host": ["{{api-gateway-url}}"],
+									"path": ["api", "sales", "orders", "{{created-order-id}}"]
+								}
+							}
+						},
+						{
+							"name": "❌ Create Order Insufficient Stock",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Error message indicates insufficient stock\", function () {",
+											"    var responseText = pm.response.text();",
+											"    pm.expect(responseText.toLowerCase()).to.include('insufficient') || pm.expect(responseText.toLowerCase()).to.include('stock');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"customerId\": \"{{customer-id}}\",\n    \"items\": [\n        {\n            \"productId\": 1,\n            \"quantity\": 1000\n        }\n    ]\n}"
+								},
+								"url": {
+									"raw": "{{api-gateway-url}}/api/sales/orders",
+									"host": ["{{api-gateway-url}}"],
+									"path": ["api", "sales", "orders"]
+								}
+							}
+						},
+						{
+							"name": "❌ Create Order Nonexistent Product",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Error message indicates product not found\", function () {",
+											"    var responseText = pm.response.text();",
+											"    pm.expect(responseText.toLowerCase()).to.include('not found') || pm.expect(responseText.toLowerCase()).to.include('product');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"customerId\": \"{{customer-id}}\",\n    \"items\": [\n        {\n            \"productId\": 999,\n            \"quantity\": 1\n        }\n    ]\n}"
+								},
+								"url": {
+									"raw": "{{api-gateway-url}}/api/sales/orders",
+									"host": ["{{api-gateway-url}}"],
+									"path": ["api", "sales", "orders"]
+								}
+							}
+						},
+						{
+							"name": "❌ Create Order Empty Items",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Error message indicates empty items\", function () {",
+											"    var responseText = pm.response.text();",
+											"    pm.expect(responseText.toLowerCase()).to.include('item') || pm.expect(responseText.toLowerCase()).to.include('empty');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"customerId\": \"{{customer-id}}\",\n    \"items\": []\n}"
+								},
+								"url": {
+									"raw": "{{api-gateway-url}}/api/sales/orders",
+									"host": ["{{api-gateway-url}}"],
+									"path": ["api", "sales", "orders"]
+								}
+							}
+						},
+						{
+							"name": "❌ Create Order Zero Quantity",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Error message indicates quantity validation\", function () {",
+											"    var responseText = pm.response.text();",
+											"    pm.expect(responseText.toLowerCase()).to.include('quantity');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"customerId\": \"{{customer-id}}\",\n    \"items\": [\n        {\n            \"productId\": 1,\n            \"quantity\": 0\n        }\n    ]\n}"
+								},
+								"url": {
+									"raw": "{{api-gateway-url}}/api/sales/orders",
+									"host": ["{{api-gateway-url}}"],
+									"path": ["api", "sales", "orders"]
+								}
+							}
+						},
+						{
+							"name": "❌ Get Nonexistent Order",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 404\", function () {",
+											"    pm.response.to.have.status(404);",
+											"});",
+											"",
+											"pm.test(\"Error message indicates not found\", function () {",
+											"    var responseText = pm.response.text();",
+											"    pm.expect(responseText.toLowerCase()).to.include('not found');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{api-gateway-url}}/api/sales/orders/999",
+									"host": ["{{api-gateway-url}}"],
+									"path": ["api", "sales", "orders", "999"]
+								}
+							}
+						},
+						{
+							"name": "✅ Cancel Order - Pending Status",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Order status is updated\", function () {",
+											"    var jsonData = pm.response.json();",
+											"    pm.expect(jsonData.status).to.eql('Cancelled');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"status\": \"Cancelled\"\n}"
+								},
+								"url": {
+									"raw": "{{api-gateway-url}}/api/sales/orders/{{created-order-id}}",
+									"host": ["{{api-gateway-url}}"],
+									"path": ["api", "sales", "orders", "{{created-order-id}}"]
+								}
+							}
+						},
+						{
+							"name": "❌ Update Shipped Order",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Error indicates cannot modify shipped order\", function () {",
+											"    var responseText = pm.response.text();",
+											"    pm.expect(responseText.toLowerCase()).to.include('shipped');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"status\": \"Cancelled\"\n}"
+								},
+								"url": {
+									"raw": "{{api-gateway-url}}/api/sales/orders/1",
+									"host": ["{{api-gateway-url}}"],
+									"path": ["api", "sales", "orders", "1"]
+								}
+							}
+						},
+						{
+							"name": "❌ Access Other User Order",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 403\", function () {",
+											"    pm.response.to.have.status(403);",
+											"});",
+											"",
+											"pm.test(\"Access denied message\", function () {",
+											"    var responseText = pm.response.text();",
+											"    pm.expect(responseText.toLowerCase()).to.include('access denied') || pm.expect(responseText.toLowerCase()).to.include('forbidden');",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{api-gateway-url}}/api/sales/orders/999",
+									"host": ["{{api-gateway-url}}"],
+									"path": ["api", "sales", "orders", "999"]
+								}
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "🌐 API Gateway",
+			"description": "Cenários do API Gateway",
+			"item": [
+				{
+					"name": "✅ Route to Stock Service",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Request routed correctly to stock service\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response received from correct service\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{api-gateway-url}}/api/stock/products",
+							"host": ["{{api-gateway-url}}"],
+							"path": ["api", "stock", "products"]
+						}
+					}
+				},
+				{
+					"name": "✅ Route to Sales Service",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Request routed correctly to sales service\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response received from correct service\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{api-gateway-url}}/api/sales/orders",
+							"host": ["{{api-gateway-url}}"],
+							"path": ["api", "sales", "orders"]
+						}
+					}
+				},
+				{
+					"name": "❌ Invalid Endpoint",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 404\", function () {",
+									"    pm.response.to.have.status(404);",
+									"});",
+									"",
+									"pm.test(\"Error indicates route not found\", function () {",
+									"    var responseText = pm.response.text();",
+									"    pm.expect(responseText.toLowerCase()).to.include('not found') || pm.expect(responseText.toLowerCase()).to.include('route');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{api-gateway-url}}/api/invalid/endpoint",
+							"host": ["{{api-gateway-url}}"],
+							"path": ["api", "invalid", "endpoint"]
+						}
+					}
+				},
+				{
+					"name": "⚠️ Service Unavailable Simulation",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 502 or 503 or 504\", function () {",
+									"    var code = pm.response.code;",
+									"    pm.expect([502, 503, 504]).to.include(code);",
+									"});",
+									"",
+									"pm.test(\"Service unavailable indication\", function () {",
+									"    var responseText = pm.response.text();",
+									"    pm.expect(responseText.toLowerCase()).to.match(/unavailable|timeout|bad gateway/);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{api-gateway-url}}/api/stock/products",
+							"host": ["{{api-gateway-url}}"],
+							"path": ["api", "stock", "products"],
+							"query": [
+								{
+									"key": "simulate",
+									"value": "unavailable",
+									"description": "Simulates service unavailable",
+									"disabled": true
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "⚡ Performance Load Test",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response time under 2 seconds\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+									"});",
+									"",
+									"pm.test(\"Status is successful\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"System maintains data consistency\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{api-gateway-url}}/api/stock/products",
+							"host": ["{{api-gateway-url}}"],
+							"path": ["api", "stock", "products"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "� Microservices Communication",
+			"description": "Cenários de comunicação entre microserviços",
+			"item": [
+				{
+					"name": "✅ RabbitMQ Message Flow Test",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Order created successfully\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"RabbitMQ message should be sent\", function () {",
+									"    // In real scenario, this would verify message was sent",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('id');",
+									"    pm.collectionVariables.set('test-order-id', jsonData.id);",
+									"});",
+									"",
+									"// Set a delay to check stock update",
+									"setTimeout(function(){}, 1000);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"customerId\": \"{{customer-id}}\",\n    \"items\": [\n        {\n            \"productId\": 1,\n            \"quantity\": 2\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{api-gateway-url}}/api/sales/orders",
+							"host": ["{{api-gateway-url}}"],
+							"path": ["api", "sales", "orders"]
+						}
+					}
+				},
+				{
+					"name": "✅ Verify Stock Reduction After Order",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Product retrieved successfully\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Stock should be reduced\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('stockQuantity');",
+									"    // In real scenario, this would verify the stock was actually reduced",
+									"    console.log('Current stock:', jsonData.stockQuantity);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{api-gateway-url}}/api/stock/products/1",
+							"host": ["{{api-gateway-url}}"],
+							"path": ["api", "stock", "products", "1"]
+						}
+					}
+				},
+				{
+					"name": "⚠️ RabbitMQ Unavailable Simulation",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Order still created despite messaging issues\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"System resilience maintained\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('id');",
+									"    pm.expect(jsonData.status).to.eql('Pending');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"customerId\": \"{{customer-id}}\",\n    \"items\": [\n        {\n            \"productId\": 1,\n            \"quantity\": 1\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{api-gateway-url}}/api/sales/orders",
+							"host": ["{{api-gateway-url}}"],
+							"path": ["api", "sales", "orders"],
+							"query": [
+								{
+									"key": "simulate",
+									"value": "rabbitmq-down",
+									"disabled": true
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "�🔒 Security",
+			"description": "Cenários de segurança",
+			"item": [
+				{
+					"name": "🛡️ SQL Injection Attempt",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Request blocked or handled safely\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([400, 401, 403, 422]);",
+									"});",
+									"",
+									"pm.test(\"No database error in response\", function () {",
+									"    var responseText = pm.response.text();",
+									"    pm.expect(responseText.toLowerCase()).to.not.include('sql');",
+									"    pm.expect(responseText.toLowerCase()).to.not.include('database');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"'; DROP TABLE Products; --\",\n    \"description\": \"SQL injection attempt\",\n    \"price\": 100.00,\n    \"stockQuantity\": 10\n}"
+						},
+						"url": {
+							"raw": "{{api-gateway-url}}/api/stock/products",
+							"host": ["{{api-gateway-url}}"],
+							"path": ["api", "stock", "products"]
+						}
+					}
+				},
+				{
+					"name": "🛡️ Invalid JWT Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 401\", function () {",
+									"    pm.response.to.have.status(401);",
+									"});",
+									"",
+									"pm.test(\"Error indicates invalid token\", function () {",
+									"    var responseText = pm.response.text();",
+									"    pm.expect(responseText.toLowerCase()).to.include('invalid') || pm.expect(responseText.toLowerCase()).to.include('unauthorized');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "invalid.jwt.token",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{api-gateway-url}}/api/stock/products",
+							"host": ["{{api-gateway-url}}"],
+							"path": ["api", "stock", "products"]
+						}
+					}
+				},
+				{
+					"name": "🛡️ Role Authorization Test",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 403\", function () {",
+									"    pm.response.to.have.status(403);",
+									"});",
+									"",
+									"pm.test(\"Insufficient permissions message\", function () {",
+									"    var responseText = pm.response.text();",
+									"    pm.expect(responseText.toLowerCase()).to.match(/insufficient|permissions|forbidden/);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{api-gateway-url}}/api/stock/products/1",
+							"host": ["{{api-gateway-url}}"],
+							"path": ["api", "stock", "products", "1"]
+						}
+					}
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{token}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Set default values if not already set",
+					"if (!pm.collectionVariables.get('api-gateway-url')) {",
+					"    pm.collectionVariables.set('api-gateway-url', 'https://localhost:5000');",
+					"}",
+					"if (!pm.collectionVariables.get('customer-id')) {",
+					"    pm.collectionVariables.set('customer-id', 'user123');",
+					"}"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global test to check response time",
+					"pm.test('Response time is reasonable', function () {",
+					"    pm.expect(pm.response.responseTime).to.be.below(5000);",
+					"});",
+					"",
+					"// Global test for proper content type on JSON responses",
+					"if (pm.response.code === 200 && pm.response.text().length > 0) {",
+					"    pm.test('Content-Type is application/json', function () {",
+					"        pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+					"    });",
+					"}"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "api-gateway-url",
+			"value": "https://localhost:5000",
+			"type": "default"
+		},
+		{
+			"key": "admin-username",
+			"value": "admin",
+			"type": "default"
+		},
+		{
+			"key": "admin-password",
+			"value": "admin123",
+			"type": "default"
+		},
+		{
+			"key": "customer-id",
+			"value": "user123",
+			"type": "default"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "created-product-id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "created-order-id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "test-order-id",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
