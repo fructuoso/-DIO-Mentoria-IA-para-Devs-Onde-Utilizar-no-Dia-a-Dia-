@@ -77,95 +77,123 @@ public class OrderService : IOrderService
             _logger.LogInformation("Creating order for customer {CustomerId} with {ItemCount} items", 
                 createOrderDto.CustomerId, createOrderDto.Items.Count);
 
-            // Validate stock availability for all items
-            var orderItems = new List<OrderItem>();
-            decimal totalAmount = 0;
-
-            foreach (var itemDto in createOrderDto.Items)
-            {
-                // Get product information
-                var product = await _stockService.GetProductAsync(itemDto.ProductId);
-                if (product == null)
-                {
-                    _logger.LogWarning("Product {ProductId} not found", itemDto.ProductId);
-                    return null;
-                }
-
-                // Check stock availability
-                var isAvailable = await _stockService.CheckStockAvailabilityAsync(itemDto.ProductId, itemDto.Quantity);
-                if (!isAvailable)
-                {
-                    _logger.LogWarning("Insufficient stock for product {ProductId}. Requested: {Quantity}", 
-                        itemDto.ProductId, itemDto.Quantity);
-                    return null;
-                }
-
-                var orderItem = new OrderItem
-                {
-                    ProductId = itemDto.ProductId,
-                    ProductName = product.Name,
-                    Quantity = itemDto.Quantity,
-                    UnitPrice = product.Price,
-                    TotalPrice = product.Price * itemDto.Quantity
-                };
-
-                orderItems.Add(orderItem);
-                totalAmount += orderItem.TotalPrice;
-            }
+            // Validate and create order items
+            var orderItemsResult = await ValidateAndCreateOrderItemsAsync(createOrderDto.Items);
+            if (orderItemsResult == null)
+                return null;
 
             // Create the order
-            var order = new Order
+            var order = await CreateOrderEntityAsync(createOrderDto.CustomerId, orderItemsResult.Value.OrderItems, orderItemsResult.Value.TotalAmount);
+
+            // Process stock reservations and messaging
+            var stockReservationSuccess = await ProcessStockReservationsAsync(order.Id, orderItemsResult.Value.OrderItems);
+            if (!stockReservationSuccess)
             {
-                CustomerId = createOrderDto.CustomerId,
-                Items = orderItems,
-                TotalAmount = totalAmount
-            };
-
-            var createdOrder = await _orderRepository.CreateAsync(order);
-
-            // Reserve stock for all items
-            bool allReservationsSuccessful = true;
-            foreach (var item in orderItems)
-            {
-                var reservationSuccess = await _stockService.ReserveStockAsync(item.ProductId, item.Quantity);
-                if (!reservationSuccess)
-                {
-                    _logger.LogError("Failed to reserve stock for product {ProductId} in order {OrderId}", 
-                        item.ProductId, createdOrder.Id);
-                    allReservationsSuccessful = false;
-                    break;
-                }
-
-                // Send stock update message
-                var stockUpdate = new StockUpdateDto
-                {
-                    ProductId = item.ProductId,
-                    Quantity = item.Quantity
-                };
-                await _messagePublisher.PublishAsync("stock-updates", stockUpdate);
-            }
-
-            if (!allReservationsSuccessful)
-            {
-                // Cancel the order if stock reservation failed
-                await _orderRepository.UpdateStatusAsync(createdOrder.Id, OrderStatus.Cancelled);
-                _logger.LogWarning("Order {OrderId} was cancelled due to stock reservation failure", createdOrder.Id);
+                await _orderRepository.UpdateStatusAsync(order.Id, OrderStatus.Cancelled);
+                _logger.LogWarning("Order {OrderId} was cancelled due to stock reservation failure", order.Id);
                 return null;
             }
 
             // Confirm the order
-            await _orderRepository.UpdateStatusAsync(createdOrder.Id, OrderStatus.Confirmed);
+            await _orderRepository.UpdateStatusAsync(order.Id, OrderStatus.Confirmed);
 
             _logger.LogInformation("Order {OrderId} created successfully for customer {CustomerId}", 
-                createdOrder.Id, createOrderDto.CustomerId);
+                order.Id, createOrderDto.CustomerId);
 
-            return _mapper.Map<OrderDto>(createdOrder);
+            return _mapper.Map<OrderDto>(order);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating order for customer {CustomerId}", createOrderDto.CustomerId);
             throw;
         }
+    }
+
+    private async Task<(List<OrderItem> OrderItems, decimal TotalAmount)?> ValidateAndCreateOrderItemsAsync(IEnumerable<CreateOrderItemDto> itemDtos)
+    {
+        var orderItems = new List<OrderItem>();
+        decimal totalAmount = 0;
+
+        foreach (var itemDto in itemDtos)
+        {
+            var product = await _stockService.GetProductAsync(itemDto.ProductId);
+            if (product == null)
+            {
+                _logger.LogWarning("Product {ProductId} not found", itemDto.ProductId);
+                return null;
+            }
+
+            var isAvailable = await _stockService.CheckStockAvailabilityAsync(itemDto.ProductId, itemDto.Quantity);
+            if (!isAvailable)
+            {
+                _logger.LogWarning("Insufficient stock for product {ProductId}. Requested: {Quantity}", 
+                    itemDto.ProductId, itemDto.Quantity);
+                return null;
+            }
+
+            var orderItem = CreateOrderItem(itemDto, product);
+            orderItems.Add(orderItem);
+            totalAmount += orderItem.TotalPrice;
+        }
+
+        return (orderItems, totalAmount);
+    }
+
+    private static OrderItem CreateOrderItem(CreateOrderItemDto itemDto, ProductDto product)
+    {
+        return new OrderItem
+        {
+            ProductId = itemDto.ProductId,
+            ProductName = product.Name,
+            Quantity = itemDto.Quantity,
+            UnitPrice = product.Price,
+            TotalPrice = product.Price * itemDto.Quantity
+        };
+    }
+
+    private async Task<Order> CreateOrderEntityAsync(string customerId, List<OrderItem> orderItems, decimal totalAmount)
+    {
+        var order = new Order
+        {
+            CustomerId = customerId,
+            Items = orderItems,
+            TotalAmount = totalAmount
+        };
+
+        return await _orderRepository.CreateAsync(order);
+    }
+
+    private async Task<bool> ProcessStockReservationsAsync(int orderId, List<OrderItem> orderItems)
+    {
+        foreach (var item in orderItems)
+        {
+            var reservationSuccess = await ReserveStockForItemAsync(item);
+            if (!reservationSuccess)
+            {
+                _logger.LogError("Failed to reserve stock for product {ProductId} in order {OrderId}", 
+                    item.ProductId, orderId);
+                return false;
+            }
+
+            await PublishStockUpdateMessageAsync(item);
+        }
+
+        return true;
+    }
+
+    private async Task<bool> ReserveStockForItemAsync(OrderItem item)
+    {
+        return await _stockService.ReserveStockAsync(item.ProductId, item.Quantity);
+    }
+
+    private async Task PublishStockUpdateMessageAsync(OrderItem item)
+    {
+        var stockUpdate = new StockUpdateDto
+        {
+            ProductId = item.ProductId,
+            Quantity = item.Quantity
+        };
+        await _messagePublisher.PublishAsync("stock-updates", stockUpdate);
     }
 
     public async Task<bool> UpdateOrderStatusAsync(int orderId, string status)
